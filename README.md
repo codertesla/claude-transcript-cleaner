@@ -4,6 +4,10 @@ A client-side web tool that cleans Claude Code exported chat transcripts. It fil
 
 **[English](#features)** | **[中文](#功能特性)**
 
+<p align="center">
+  <img src="home.avif" alt="Claude Transcript Cleaner" width="680">
+</p>
+
 ---
 
 ## Features
