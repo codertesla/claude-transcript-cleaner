@@ -1,10 +1,18 @@
 // ── i18n ──
 const I18N = {
   zh: {
-    subtitle: '上传 Claude Code 导出的 .zip 或 .jsonl，过滤工具调用与元数据，仅保留核心对话内容。',
+    heroBadge: '开源 & 纯客户端',
+    heroTitle: '清理 Claude 对话记录',
+    heroDesc: '上传 Claude Code 导出的 .zip 或 .jsonl 文件，自动过滤工具调用与系统元数据，仅保留人机核心对话内容。',
     uploadText: '拖拽文件到此处，或 <strong>点击选择</strong>',
-    uploadHint: '支持 .zip 压缩包 和 .jsonl 文件 | 可多选',
+    uploadHint: '支持 .zip 和 .jsonl | 可多选',
     processing: '正在解析和过滤中...',
+    feat1Title: '智能过滤',
+    feat1Desc: '自动剔除工具调用、系统消息等非对话内容',
+    feat2Title: '即时预览',
+    feat2Desc: '上传后立即预览清理后的对话，确认后下载',
+    feat3Title: '隐私安全',
+    feat3Desc: '所有处理在浏览器本地完成，文件不会上传到任何服务器',
     sessions: '个会话',
     messages: '条消息',
     kept: '保留',
@@ -24,10 +32,18 @@ const I18N = {
     langToggle: 'EN',
   },
   en: {
-    subtitle: 'Upload Claude Code exported .zip or .jsonl files. Filters out tool calls and metadata, keeping only the core conversation.',
+    heroBadge: 'Open Source & Client-Side',
+    heroTitle: 'Clean Claude Transcripts',
+    heroDesc: 'Upload Claude Code exported .zip or .jsonl files. Automatically filters out tool calls and system metadata, keeping only the core conversation.',
     uploadText: 'Drop files here, or <strong>click to browse</strong>',
-    uploadHint: 'Supports .zip archives and .jsonl files | Multiple selection',
+    uploadHint: 'Supports .zip and .jsonl | Multiple files',
     processing: 'Parsing and filtering...',
+    feat1Title: 'Smart Filtering',
+    feat1Desc: 'Strips tool calls, system messages, and non-conversational content',
+    feat2Title: 'Instant Preview',
+    feat2Desc: 'Preview cleaned conversations immediately before downloading',
+    feat3Title: 'Privacy First',
+    feat3Desc: 'All processing happens locally in your browser. No data leaves your machine',
     sessions: 'sessions',
     messages: 'messages',
     kept: 'Kept',
@@ -53,11 +69,9 @@ function t(key) { return I18N[lang][key]; }
 
 function applyI18n() {
   document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    const val = t(key);
+    const val = t(el.getAttribute('data-i18n'));
     if (typeof val === 'string') {
-      if (val.includes('<')) el.innerHTML = val;
-      else el.textContent = val;
+      if (val.includes('<')) el.innerHTML = val; else el.textContent = val;
     }
   });
   document.getElementById('langLabel').textContent = t('langToggle');
@@ -70,7 +84,7 @@ function toggleLang() {
 }
 window.toggleLang = toggleLang;
 
-// ── DOM refs ──
+// ── DOM ──
 const uploadWrap = document.getElementById('uploadWrap');
 const uploadZone = document.getElementById('uploadZone');
 const fileInput = document.getElementById('fileInput');
@@ -78,8 +92,9 @@ const processing = document.getElementById('processing');
 const errorMsg = document.getElementById('errorMsg');
 const errorText = document.getElementById('errorText');
 const resultsEl = document.getElementById('results');
+const heroSection = document.getElementById('heroSection');
 
-// ── Upload handlers ──
+// ── Upload ──
 uploadZone.addEventListener('click', () => fileInput.click());
 uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
 uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
@@ -111,6 +126,7 @@ async function handleFiles(files) {
     }
     if (!sessions.length) throw new Error(t('errorNoData'));
     uploadWrap.classList.add('has-results');
+    heroSection.classList.add('hidden');
     renderResults(sessions);
   } catch (err) {
     errorText.textContent = err.message;
@@ -121,7 +137,7 @@ async function handleFiles(files) {
   }
 }
 
-// ── Zip processing ──
+// ── Zip ──
 async function processZip(file) {
   const zip = await JSZip.loadAsync(file);
   const entries = Object.keys(zip.files);
@@ -146,7 +162,7 @@ async function processZip(file) {
   return sessions;
 }
 
-// ── JSONL parsing & filtering ──
+// ── Parse ──
 function parseJsonl(content) {
   const messages = [];
   let filteredOut = 0;
@@ -156,7 +172,6 @@ function parseJsonl(content) {
     let data;
     try { data = JSON.parse(trimmed); } catch (_) { continue; }
     if (!data.message) { filteredOut++; continue; }
-
     const role = (data.message.role || 'unknown').toUpperCase();
     const raw = data.message.content;
     let text = '';
@@ -174,9 +189,7 @@ function parseJsonl(content) {
   return { messages, filteredOut };
 }
 
-function cleanFilename(name) {
-  return name.replace(/[\\/*?:"<>|]/g, '');
-}
+function cleanFilename(name) { return name.replace(/[\\/*?:"<>|]/g, ''); }
 
 function processSession(content, metadata, fallbackName) {
   const { messages, filteredOut } = parseJsonl(content);
@@ -186,21 +199,20 @@ function processSession(content, metadata, fallbackName) {
     if (safe) baseName = safe;
   }
   const outputText = buildOutputText(messages, metadata);
-  const title = (metadata && metadata.title) || fallbackName;
   let createdAt = null;
   if (metadata && metadata.createdAt) {
     try {
-      createdAt = new Date(metadata.createdAt).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
-      });
+      createdAt = new Date(metadata.createdAt).toLocaleString(
+        lang === 'zh' ? 'zh-CN' : 'en-US',
+        { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }
+      );
     } catch (_) {}
   }
   return {
     baseName,
     downloadName: baseName + '_cleaned.txt',
     outputText,
-    title,
+    title: (metadata && metadata.title) || fallbackName,
     model: metadata?.model || null,
     createdAt,
     turns: metadata?.completedTurns || null,
@@ -217,31 +229,26 @@ function buildOutputText(messages, metadata) {
   if (metadata) {
     parts.push('='.repeat(40), ' Metadata', '='.repeat(40));
     parts.push(`Title: ${metadata.title || 'Unknown'}`);
-    if (metadata.createdAt) {
-      try { parts.push(`Created: ${new Date(metadata.createdAt).toLocaleString()}`); } catch (_) {}
-    }
+    if (metadata.createdAt) try { parts.push(`Created: ${new Date(metadata.createdAt).toLocaleString()}`); } catch (_) {}
     if (metadata.model) parts.push(`Model: ${metadata.model}`);
     if (metadata.completedTurns) parts.push(`Turns: ${metadata.completedTurns}`);
     if (metadata.cwd) parts.push(`Working Dir: ${metadata.cwd}`);
     parts.push('='.repeat(40), '');
   }
-  for (const msg of messages) {
-    parts.push(`[${msg.role}]`, msg.text, '-'.repeat(40), '');
-  }
+  for (const msg of messages) parts.push(`[${msg.role}]`, msg.text, '-'.repeat(40), '');
   return parts.join('\n');
 }
 
-// ── Download helpers ──
+// ── Download ──
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = filename;
-  document.body.appendChild(a);
-  a.click(); a.remove();
+  document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
-function downloadSession(session) {
-  downloadBlob(new Blob([session.outputText], { type: 'text/plain;charset=utf-8' }), session.downloadName);
+function downloadSession(s) {
+  downloadBlob(new Blob([s.outputText], { type: 'text/plain;charset=utf-8' }), s.downloadName);
 }
 async function downloadAll(sessions) {
   const zip = new JSZip();
@@ -251,7 +258,7 @@ async function downloadAll(sessions) {
 window.downloadSession = downloadSession;
 window.downloadAll = downloadAll;
 
-// ── SVG icons ──
+// ── SVG ──
 const SVG = {
   down: '<svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
   eye: '<svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -259,12 +266,8 @@ const SVG = {
   chat: '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
 };
 
-// ── Rendering ──
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
+// ── Render ──
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 function trunc(s, n) { return s.length > n ? s.substring(0, n) + '\u2026' : s; }
 function fmtSize(b) {
   if (b < 1024) return b + ' B';
@@ -290,13 +293,11 @@ function renderResults(sessions) {
   }
 
   sessions.forEach((s, i) => {
-    const previewId = 'preview-' + i;
+    const pid = 'preview-' + i;
     const total = s.filteredOut + s.messageCount;
     const pct = total > 0 ? Math.round(s.messageCount / total * 100) : 0;
 
-    html += `<div class="session-card">`;
-
-    html += `<div class="session-header">
+    html += `<div class="session-card"><div class="session-header">
       <div class="session-title">${esc(s.title || t('untitled'))}</div>
       <div class="session-meta">
         ${s.model ? `<span class="meta-tag"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><span class="meta-val">${esc(s.model)}</span></span>` : ''}
@@ -314,23 +315,18 @@ function renderResults(sessions) {
 
     html += `<div class="session-actions">
       <button class="btn btn-primary" onclick="downloadSession(_sessions[${i}])">${SVG.down} ${t('download')}</button>
-      <button class="btn btn-ghost" id="toggleBtn-${i}" onclick="togglePreview('${previewId}', this)">${SVG.eyeOff} ${t('hide')}</button>
+      <button class="btn btn-ghost" id="tbtn-${i}" onclick="togglePreview('${pid}',this)">${SVG.eyeOff} ${t('hide')}</button>
     </div>`;
 
-    // Preview default OPEN
-    html += `<div class="preview-wrap open" id="${previewId}">
+    html += `<div class="preview-wrap open" id="${pid}">
       <div class="preview-header">${SVG.chat} ${t('previewHeader')(s.preview.length)}</div>
       <div class="message-list">`;
 
     s.preview.forEach((m, mi) => {
       const cls = (m.role === 'HUMAN' || m.role === 'USER') ? 'human' : 'assistant';
-      html += `<div class="msg ${cls}">
-        <div class="msg-top">
-          <span class="msg-role-badge">${esc(m.role)}</span>
-          <span class="msg-index">#${mi + 1}</span>
-        </div>
-        <div class="msg-body">${esc(trunc(m.text, 2000))}</div>
-      </div>`;
+      html += `<div class="msg ${cls}"><div class="msg-top">
+        <span class="msg-role-badge">${esc(m.role)}</span><span class="msg-index">#${mi+1}</span>
+      </div><div class="msg-body">${esc(trunc(m.text, 2000))}</div></div>`;
     });
 
     if (s.messageCount > s.preview.length) {
@@ -345,11 +341,8 @@ function renderResults(sessions) {
 
 function togglePreview(id, btn) {
   const el = document.getElementById(id);
-  const isOpen = el.classList.contains('open');
-  el.classList.toggle('open');
-  btn.innerHTML = isOpen
-    ? SVG.eye + ' ' + t('preview')
-    : SVG.eyeOff + ' ' + t('hide');
+  const open = el.classList.toggle('open');
+  btn.innerHTML = open ? SVG.eyeOff + ' ' + t('hide') : SVG.eye + ' ' + t('preview');
 }
 window.togglePreview = togglePreview;
 
