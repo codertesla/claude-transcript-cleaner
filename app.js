@@ -1,55 +1,85 @@
 // ── i18n ──
 const I18N = {
   zh: {
-    heroTitle: '清理 Claude 对话记录',
-    heroDesc: '上传 Claude Code 导出的 .zip 或 .jsonl 文件，自动过滤工具调用与系统元数据，仅保留人机核心对话内容。',
-    uploadText: '拖拽文件到此处，或 <strong>点击选择</strong>',
-    uploadHint: '支持 .zip 和 .jsonl | 可多选',
-    processing: '正在解析和过滤中...',
+    heroEyebrow: 'Claude Code 导出清理',
+    heroTitle: '保留对话核心',
+    heroDesc: '把导出的 zip 或 jsonl 拖进来。工具调用、系统信息和空内容会自动去掉。',
+    heroPointTitle1: '拖进来',
+    heroPointText1: '支持 zip、jsonl',
+    heroPointTitle2: '自动清理',
+    heroPointText2: '去掉工具和系统信息',
+    heroPointTitle3: '直接下载',
+    heroPointText3: '先预览，再保存',
+    uploadKicker: '上传文件',
+    uploadCardTitle: '把记录放进来',
+    uploadCardDesc: '本地处理，不上传。',
+    uploadText: '拖拽文件到这里，或 <strong>点一下选择</strong>',
+    uploadHint: '支持 .zip 和 .jsonl，可一次放多个',
+    processing: '正在整理对话，请稍等...',
     trustPrivacy: '本地处理',
-    trustFast: '智能过滤',
-    trustPreview: '即时预览',
+    trustFast: '自动清理',
+    trustPreview: '先看后下',
+    resultsKicker: '结果',
+    resultsTitle: '已经清理好了',
+    resultsIntro: (sessions, kept, filtered) => `共整理 ${sessions} 个会话，留下 ${kept} 条正文，去掉 ${filtered} 条杂项内容。`,
+    resultsReady: '可直接下载',
     sessions: '个会话',
     messages: '条消息',
     kept: '保留',
-    filtered: '过滤',
+    filtered: '滤掉',
     ratio: '保留率',
     size: '大小',
     download: '下载',
-    downloadAll: '下载全部',
-    preview: '预览',
-    hide: '收起',
-    previewHeader: (n) => `预览（前 ${n} 条消息）`,
+    downloadAll: '全部下载',
+    preview: '展开预览',
+    hide: '收起预览',
+    previewHeader: (n) => `预览前 ${n} 条`,
     moreMessages: (n) => `还有 ${n} 条消息，请下载查看完整内容`,
     untitled: '未命名会话',
     turns: (n) => `${n} 轮`,
+    sessionStatus: '已清理',
     errorUnsupported: (name) => `不支持的文件格式: ${name}`,
     errorNoData: '未找到有效的 .jsonl 数据',
     langToggle: 'EN',
   },
   en: {
-    heroTitle: 'Clean Claude Transcripts',
-    heroDesc: 'Upload Claude Code exported .zip or .jsonl files. Automatically filters out tool calls and system metadata, keeping only the core conversation.',
+    heroEyebrow: 'Claude Code Export Cleaner',
+    heroTitle: 'Keep the real conversation',
+    heroDesc: 'Drop in a zip or jsonl export. Tool calls, system data, and empty content are removed automatically.',
+    heroPointTitle1: 'Drop in',
+    heroPointText1: 'zip or jsonl',
+    heroPointTitle2: 'Clean up',
+    heroPointText2: 'remove tools and system data',
+    heroPointTitle3: 'Download',
+    heroPointText3: 'preview first, then save',
+    uploadKicker: 'Upload',
+    uploadCardTitle: 'Drop in your export',
+    uploadCardDesc: 'Local only. Nothing is uploaded.',
     uploadText: 'Drop files here, or <strong>click to browse</strong>',
-    uploadHint: 'Supports .zip and .jsonl | Multiple files',
-    processing: 'Parsing and filtering...',
-    trustPrivacy: 'Local processing',
-    trustFast: 'Smart filtering',
-    trustPreview: 'Instant preview',
+    uploadHint: 'Supports .zip and .jsonl, with multiple files',
+    processing: 'Cleaning the transcript...',
+    trustPrivacy: 'Local only',
+    trustFast: 'Auto clean',
+    trustPreview: 'Preview first',
+    resultsKicker: 'Output',
+    resultsTitle: 'Your transcript is ready',
+    resultsIntro: (sessions, kept, filtered) => `${sessions} session(s) cleaned, ${kept} dialogue messages kept, ${filtered} noisy items removed.`,
+    resultsReady: 'Ready to download',
     sessions: 'sessions',
     messages: 'messages',
     kept: 'Kept',
-    filtered: 'Filtered',
+    filtered: 'Removed',
     ratio: 'Ratio',
     size: 'Size',
     download: 'Download',
-    downloadAll: 'Download All',
-    preview: 'Preview',
-    hide: 'Hide',
-    previewHeader: (n) => `Preview (first ${n} messages)`,
+    downloadAll: 'Download all',
+    preview: 'Show preview',
+    hide: 'Hide preview',
+    previewHeader: (n) => `Preview first ${n}`,
     moreMessages: (n) => `+${n} more messages in full download`,
     untitled: 'Untitled Session',
     turns: (n) => `${n} turns`,
+    sessionStatus: 'cleaned',
     errorUnsupported: (name) => `Unsupported file format: ${name}`,
     errorNoData: 'No valid .jsonl data found',
     langToggle: '中文',
@@ -145,7 +175,7 @@ async function processZip(file) {
     const dir = jf.substring(0, jf.lastIndexOf('/'));
     let metadata = null;
     if (metadataMap[dir]) {
-      try { metadata = JSON.parse(await zip.file(metadataMap[dir]).async('string')); } catch (_) {}
+      try { metadata = JSON.parse(await zip.file(metadataMap[dir]).async('string')); } catch (_) { }
     }
     const content = await zip.file(jf).async('string');
     const baseName = jf.substring(jf.lastIndexOf('/') + 1).replace(/\.jsonl$/, '');
@@ -196,9 +226,9 @@ function processSession(content, metadata, fallbackName) {
     try {
       createdAt = new Date(metadata.createdAt).toLocaleString(
         lang === 'zh' ? 'zh-CN' : 'en-US',
-        { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false }
+        { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
       );
-    } catch (_) {}
+    } catch (_) { }
   }
   return {
     baseName,
@@ -221,7 +251,7 @@ function buildOutputText(messages, metadata) {
   if (metadata) {
     parts.push('='.repeat(40), ' Metadata', '='.repeat(40));
     parts.push(`Title: ${metadata.title || 'Unknown'}`);
-    if (metadata.createdAt) try { parts.push(`Created: ${new Date(metadata.createdAt).toLocaleString()}`); } catch (_) {}
+    if (metadata.createdAt) try { parts.push(`Created: ${new Date(metadata.createdAt).toLocaleString()}`); } catch (_) { }
     if (metadata.model) parts.push(`Model: ${metadata.model}`);
     if (metadata.completedTurns) parts.push(`Turns: ${metadata.completedTurns}`);
     if (metadata.cwd) parts.push(`Working Dir: ${metadata.cwd}`);
@@ -271,14 +301,23 @@ let _sessions = [];
 
 function renderResults(sessions) {
   _sessions = sessions;
-  let html = '';
+  const totalMsgs = sessions.reduce((a, s) => a + s.messageCount, 0);
+  const totalFiltered = sessions.reduce((a, s) => a + s.filteredOut, 0);
+  let html = `<div class="results-intro">
+    <div class="results-intro-copy">
+      <div class="results-intro-kicker">${t('resultsKicker')}</div>
+      <div class="results-intro-title">${t('resultsTitle')}</div>
+      <div class="results-intro-text">${t('resultsIntro')(sessions.length, totalMsgs, totalFiltered)}</div>
+    </div>
+    <div class="results-pill">${t('resultsReady')}</div>
+  </div>`;
 
   if (sessions.length > 1) {
-    const totalMsgs = sessions.reduce((a, s) => a + s.messageCount, 0);
     html += `<div class="batch-bar">
       <div class="batch-stats">
         <div class="batch-stat-item"><div class="batch-stat-val">${sessions.length}</div><div class="batch-stat-lbl">${t('sessions')}</div></div>
         <div class="batch-stat-item"><div class="batch-stat-val">${totalMsgs}</div><div class="batch-stat-lbl">${t('messages')}</div></div>
+        <div class="batch-stat-item"><div class="batch-stat-val">${totalFiltered}</div><div class="batch-stat-lbl">${t('filtered')}</div></div>
       </div>
       <button class="btn btn-primary" onclick="downloadAll(_sessions)">${SVG.down} ${t('downloadAll')}</button>
     </div>`;
@@ -290,7 +329,12 @@ function renderResults(sessions) {
     const pct = total > 0 ? Math.round(s.messageCount / total * 100) : 0;
 
     html += `<div class="session-card"><div class="session-header">
-      <div class="session-title">${esc(s.title || t('untitled'))}</div>
+      <div class="session-header-top">
+        <div class="session-heading">
+          <div class="session-status">${t('sessionStatus')}</div>
+          <div class="session-title">${esc(s.title || t('untitled'))}</div>
+        </div>
+      </div>
       <div class="session-meta">
         ${s.model ? `<span class="meta-tag"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><span class="meta-val">${esc(s.model)}</span></span>` : ''}
         ${s.createdAt ? `<span class="meta-tag"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span class="meta-val">${esc(s.createdAt)}</span></span>` : ''}
@@ -317,7 +361,7 @@ function renderResults(sessions) {
     s.preview.forEach((m, mi) => {
       const cls = (m.role === 'HUMAN' || m.role === 'USER') ? 'human' : 'assistant';
       html += `<div class="msg ${cls}"><div class="msg-top">
-        <span class="msg-role-badge">${esc(m.role)}</span><span class="msg-index">#${mi+1}</span>
+        <span class="msg-role-badge">${esc(m.role)}</span><span class="msg-index">#${mi + 1}</span>
       </div><div class="msg-body">${esc(trunc(m.text, 2000))}</div></div>`;
     });
 
